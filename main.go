@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/log"
 )
@@ -47,9 +49,13 @@ func getInputs() (int, string, string, string, string, string) {
 	// Label selector for nodes
 	labelSelector := os.Getenv("NODES_LABEL_SELECTOR")
 	if labelSelector == "" {
-		logger.Fatal(
-			"Label selector have to be set with NODES_LABEL_SELECTOR environment variable",
+		return nil, fmt.Errorf(
+			"label selector must be set with NODES_LABEL_SELECTOR environment variable",
 		)
+	}
+	// try to split labelSelector by = and count the number of parts
+	if parts := strings.Split(labelSelector, "="); len(parts) != 2 {
+		return nil, fmt.Errorf("label selector must be in the format key=value")
 	}
 
 	return remoteASInt, a10Address, a10Username, a10Password, a10As, labelSelector
@@ -68,7 +74,10 @@ func main() {
 		// Formatter:       log.LogfmtFormatter,
 	})
 
-	clientset := getKubernetesClient()
+	clientset, err := getKubernetesClient()
+	if err != nil {
+		logger.Fatal("Error getting Kubernetes client:", err)
+	}
 	remoteAS, a10Address, a10Username, a10Password, a10AS, labelSelector := getInputs()
 	logger.Info(
 		"Inputs",
@@ -92,15 +101,21 @@ func main() {
 		as:       a10AS,
 		remoteAS: remoteAS,
 	}
-	a10.getNeighbors()
+	if err := a10.getNeighbors(); err != nil {
+		logger.Fatal("Error getting neighbors from A10:", err)
+	}
 
 	// Remove extra neighbors from A10 that are not in k8s
 	kubeNodes := KubeNodes{
 		clientset: clientset,
 		label:     labelSelector,
 	}
-	kubeNodes.GetNodes()
-	removeExtraNeighbors(&a10, &kubeNodes)
+	if err := kubeNodes.GetNodes(); err != nil {
+		logger.Fatal("Error getting nodes from k8s:", err)
+	}
+	if err := removeExtraNeighbors(&a10, &kubeNodes); err != nil {
+		logger.Fatal("Error removing extra neighbors from A10:", err)
+	}
 
 	neighbors := Neighbors{
 		clientset: clientset,

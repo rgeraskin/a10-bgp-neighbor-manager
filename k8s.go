@@ -28,7 +28,9 @@ func (n *Neighbors) add(obj interface{}) {
 	logger.Info("Node add event", "node", node.Name)
 	if nodeEligible(node, n.label) {
 		logger.Info("Node should be added", "node", node.Name)
-		n.a10.AddNeighbor(nodeExternalAddress(node))
+		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
+			logger.Error("Error adding neighbor to A10:", "node", node.Name, "error", err)
+		}
 	}
 }
 
@@ -37,10 +39,14 @@ func (n *Neighbors) update(_ interface{}, obj interface{}) {
 	logger.Info("Node update event", "node", node.Name)
 	if nodeEligible(node, n.label) {
 		logger.Info("Node should be added", "node", node.Name)
-		n.a10.AddNeighbor(nodeExternalAddress(node))
+		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
+			logger.Error("Error adding neighbor to A10:", "node", node.Name, "error", err)
+		}
 	} else {
 		logger.Info("Node should be removed", "node", node.Name)
-		n.a10.RemoveNeighbor(nodeExternalAddress(node))
+		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
+			logger.Error("Error removing neighbor from A10:", "node", node.Name, "error", err)
+		}
 	}
 }
 
@@ -49,7 +55,9 @@ func (n *Neighbors) delete(obj interface{}) {
 	logger.Info("Node delete event", "node", node.Name)
 	if nodeLabeled(node, n.label) {
 		logger.Info("Node should be removed", "node", node.Name)
-		n.a10.RemoveNeighbor(nodeExternalAddress(node))
+		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
+			logger.Error("Error removing neighbor from A10:", "node", node.Name, "error", err)
+		}
 	}
 }
 
@@ -121,6 +129,10 @@ func nodeCordoned(node *v1.Node) bool {
 func nodeLabeled(node *v1.Node, label string) bool {
 	// split label into key and value
 	parts := strings.Split(label, "=")
+	if len(parts) != 2 {
+		logger.Error("Invalid label format", "label", label)
+		return false
+	}
 	key := parts[0]
 	value := parts[1]
 	labeled := node.Labels[key] == value
@@ -140,7 +152,7 @@ func nodeExternalAddress(node *v1.Node) string {
 	return ""
 }
 
-func getKubernetesClient() *kubernetes.Clientset {
+func getKubernetesClient() (*kubernetes.Clientset, error) {
 	var config *rest.Config
 	var err error
 	logger.Info("Getting Kubernetes client")
@@ -150,22 +162,22 @@ func getKubernetesClient() *kubernetes.Clientset {
 		// Load kubeconfig file for out-of-cluster use
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
-			logger.Fatalf("Error loading kubeconfig: %v", err)
+			return nil, fmt.Errorf("error loading kubeconfig: %w", err)
 		}
 	} else {
 		// Use in-cluster configuration
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			logger.Fatalf("Error creating in-cluster config: %v", err)
+			return nil, fmt.Errorf("error creating in-cluster config: %w", err)
 		}
 	}
 
 	// Create a new Kubernetes client using the in-cluster config
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		logger.Fatal("Error creating Kubernetes client: %v", err)
+		return nil, fmt.Errorf("error creating Kubernetes client: %w", err)
 	}
-	return clientset
+	return clientset, nil
 }
 
 type KubeNodes struct {
@@ -174,14 +186,14 @@ type KubeNodes struct {
 	Nodes     []string
 }
 
-func (n *KubeNodes) GetNodes() {
+func (n *KubeNodes) GetNodes() error {
 	logger.Info("Getting nodes from k8s")
 
 	nodes, err := n.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{
 		LabelSelector: n.label,
 	})
 	if err != nil {
-		logger.Fatalf("Error fetching nodes: %v", err)
+		return fmt.Errorf("error fetching nodes: %w", err)
 	}
 
 	// Find nodes that are ready, not drained and have an external address
@@ -192,6 +204,7 @@ func (n *KubeNodes) GetNodes() {
 			n.Nodes = append(n.Nodes, nodeExternalAddress(&node))
 		}
 	}
+	return nil
 }
 
 // func nodeDrained(clientset *kubernetes.Clientset, node *v1.Node) bool {

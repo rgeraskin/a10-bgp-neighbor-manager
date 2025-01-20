@@ -51,45 +51,53 @@ func (a *A10) login() error {
 	// Convert the JSON object to a string
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
-		logger.Fatalf("Error marshaling JSON: %v", err)
+		return fmt.Errorf("marshaling JSON: %w", err)
 	}
 	// Create a new HTTP POST request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
 	if err != nil {
-		logger.Fatal("Error creating request to A10 to get neighbors:", err)
+		return fmt.Errorf("creating request to A10 to get neighbors: %w", err)
 	}
 
 	// make http request
-	body := a.makeRequest(req, a.signature)
+	body, err := a.makeRequest(req, a.signature)
+	if err != nil {
+		return fmt.Errorf("making http request: %w", err)
+	}
 
 	// get signature
 	var response authResponse
 	if err = json.Unmarshal(body, &response); err != nil {
-		logger.Fatal("Error unmarshaling JSON from A10 to get neighbors:", err)
+		return fmt.Errorf("unmarshaling JSON from A10 to get neighbors: %w", err)
 	}
 	a.signature = response.AuthResponse.Signature
 	logger.Debugf("Logged in to A10, signature: %s", a.signature)
 	return nil
 }
 
-func (a *A10) getNeighbors() {
+func (a *A10) getNeighbors() error {
 	logger.Debug("Getting neighbors from A10")
-	a.login()
+	if err := a.login(); err != nil {
+		return fmt.Errorf("logging in to A10: %w", err)
+	}
 
 	url := fmt.Sprintf("%s/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor", a.address, a.as)
 
 	// Create a new HTTP GET request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		logger.Fatal("Error creating request to A10 to get neighbors:", err)
+		return fmt.Errorf("creating request to A10 to get neighbors: %w", err)
 	}
 
-	body := a.makeRequest(req, a.signature)
+	body, err := a.makeRequest(req, a.signature)
+	if err != nil {
+		return fmt.Errorf("making http request: %w", err)
+	}
 
 	// Parse the JSON response
 	var response ipv4Neighbors
 	if err = json.Unmarshal(body, &response); err != nil {
-		logger.Fatal("Error unmarshaling JSON from A10 to get neighbors:", err)
+		return fmt.Errorf("unmarshaling JSON from A10 to get neighbors: %w", err)
 	}
 
 	// For debugging, print the response
@@ -109,6 +117,7 @@ func (a *A10) getNeighbors() {
 		"neighbors",
 		a.neighbors,
 	)
+	return nil
 }
 
 func (a *A10) containsNeighbor(neighborIP string) bool {
@@ -118,12 +127,14 @@ func (a *A10) containsNeighbor(neighborIP string) bool {
 	return contains
 }
 
-func (a *A10) AddNeighbor(neighborIP string) {
+func (a *A10) AddNeighbor(neighborIP string) error {
 	if a.containsNeighbor(neighborIP) {
 		logger.Info("Neighbor already exists in A10", "neighbor", neighborIP)
-		return
+		return nil
 	}
-	a.login()
+	if err := a.login(); err != nil {
+		return fmt.Errorf("logging in to A10: %w", err)
+	}
 	logger.Info("Adding neighbor to A10", "neighbor", neighborIP)
 
 	url := fmt.Sprintf("%s/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor/", a.address, a.as)
@@ -137,29 +148,35 @@ func (a *A10) AddNeighbor(neighborIP string) {
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		logger.Fatal("Error marshaling request data:", err)
+		return fmt.Errorf("marshaling request data: %w", err)
 	}
 	logger.Debugf("Request body to add neighbor: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		logger.Fatal("Error creating request to A10 to add neighbor:", err)
+		return fmt.Errorf("creating request to A10 to add neighbor: %w", err)
 	}
 
 	logger.Debug("Making request to A10 to add neighbor")
-	_ = a.makeRequest(req, a.signature)
+	_, err = a.makeRequest(req, a.signature)
+	if err != nil {
+		return fmt.Errorf("making http request: %w", err)
+	}
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.neighbors = append(a.neighbors, neighborIP)
+	return nil
 }
 
-func (a *A10) RemoveNeighbor(neighborIP string) {
+func (a *A10) RemoveNeighbor(neighborIP string) error {
 	if !a.containsNeighbor(neighborIP) {
 		logger.Info("Neighbor does not exist in A10", "neighbor", neighborIP)
-		return
+		return nil
 	}
-	a.login()
+	if err := a.login(); err != nil {
+		return fmt.Errorf("logging in to A10: %w", err)
+	}
 	logger.Info("Removing neighbor from A10", "neighbor", neighborIP)
 
 	// Create a new HTTP DELETE request
@@ -172,11 +189,14 @@ func (a *A10) RemoveNeighbor(neighborIP string) {
 
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
-		logger.Fatal("Error creating request to A10 to remove neighbor:", err)
+		return fmt.Errorf("creating request to A10 to remove neighbor: %w", err)
 	}
 
 	logger.Debug("Making request to A10 to remove neighbor")
-	_ = a.makeRequest(req, a.signature)
+	_, err = a.makeRequest(req, a.signature)
+	if err != nil {
+		return fmt.Errorf("making http request: %w", err)
+	}
 
 	// Delete neighbor from A10
 	a.mu.Lock()
@@ -184,9 +204,10 @@ func (a *A10) RemoveNeighbor(neighborIP string) {
 	idx := slices.Index(a.neighbors, neighborIP)
 	a.neighbors = slices.Delete(a.neighbors, idx, idx+1)
 	logger.Debug("Neighbors after deletion", "neighbors", a.neighbors)
+	return nil
 }
 
-func (a *A10) makeRequest(req *http.Request, signature string) []byte {
+func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -204,33 +225,36 @@ func (a *A10) makeRequest(req *http.Request, signature string) []byte {
 	// make http request
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("Error making http request:", err)
+		return nil, fmt.Errorf("making http request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// check if status code is ok
 	if resp.StatusCode != http.StatusOK {
-		logger.Fatal("HTTP request failed:", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP request failed: %d", resp.StatusCode)
 	}
 
 	// Read response body into string
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Fatal("Error reading response body:", err)
+		return nil, fmt.Errorf("reading response body: %w", err)
 	}
 
 	// return body bytes
-	return body
+	return body, nil
 }
 
-func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) {
+func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) error {
 	// Remove neighbors from A10 that are not in k8s
 	logger.Info("Removing extra neighbors from A10")
 	for _, neighbor := range a10.neighbors {
 		logger.Debug("Checking neighbor", "address", neighbor)
 		if !slices.Contains(kubeNodes.Nodes, neighbor) {
 			logger.Info("A10 neighbor not found in k8s", "neighbor", neighbor)
-			a10.RemoveNeighbor(neighbor)
+			if err := a10.RemoveNeighbor(neighbor); err != nil {
+				return fmt.Errorf("removing neighbor: %w", err)
+			}
 		}
 	}
+	return nil
 }
