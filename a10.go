@@ -9,6 +9,13 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"time"
+)
+
+const (
+	defaultTimeout = 10 * time.Second
+	authEndpoint   = "/axapi/v3/auth"
+	bgpEndpoint    = "/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor"
 )
 
 type authResponse struct {
@@ -38,7 +45,7 @@ type A10 struct {
 func (a *A10) login() error {
 	logger.Debug("Logging in to A10")
 
-	url := fmt.Sprintf("%s/axapi/v3/auth", a.address)
+	url := fmt.Sprintf("%s%s", a.address, authEndpoint)
 
 	// Define the structure of the data
 	data := map[string]interface{}{
@@ -81,7 +88,7 @@ func (a *A10) getNeighbors() error {
 		return fmt.Errorf("logging in to A10: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor", a.address, a.as)
+	url := fmt.Sprintf("%s%s", a.address, fmt.Sprintf(bgpEndpoint, a.as))
 
 	// Create a new HTTP GET request
 	req, err := http.NewRequest("GET", url, nil)
@@ -137,7 +144,7 @@ func (a *A10) AddNeighbor(neighborIP string) error {
 	}
 	logger.Info("Adding neighbor to A10", "neighbor", neighborIP)
 
-	url := fmt.Sprintf("%s/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor/", a.address, a.as)
+	url := fmt.Sprintf("%s%s", a.address, fmt.Sprintf(bgpEndpoint, a.as))
 
 	// Initialize the data structure correctly
 	data := map[string]interface{}{
@@ -181,9 +188,9 @@ func (a *A10) RemoveNeighbor(neighborIP string) error {
 
 	// Create a new HTTP DELETE request
 	url := fmt.Sprintf(
-		"%s/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor/%s",
+		"%s%s/%s",
 		a.address,
-		a.as,
+		fmt.Sprintf(bgpEndpoint, a.as),
 		neighborIP,
 	)
 
@@ -220,7 +227,10 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   defaultTimeout,
+	}
 
 	// make http request
 	resp, err := client.Do(req)
