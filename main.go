@@ -140,6 +140,7 @@ func main() {
 		as:       config.AS,
 		remoteAS: config.RemoteAS,
 	}
+	a10.AddHTTPClient()
 	if err := a10.GetNeighbors(); err != nil {
 		logger.Fatal("Error getting neighbors from A10:", err)
 	}

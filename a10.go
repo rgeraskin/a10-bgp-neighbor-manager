@@ -41,8 +41,9 @@ type A10 struct {
 	remoteAS, as                int
 	neighbors                   []string
 
-	ctx context.Context
-	mu  sync.Mutex
+	ctx    context.Context
+	mu     sync.Mutex
+	client *http.Client
 }
 
 type BGPManager interface {
@@ -52,6 +53,17 @@ type BGPManager interface {
 	containsNeighbor(neighborIP string) bool
 	login() error
 	makeRequest(req *http.Request, signature string) ([]byte, error)
+}
+
+func (a *A10) AddHTTPClient() {
+	// create http client with TLS skip verify
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	a.client = &http.Client{
+		Transport: tr,
+		Timeout:   defaultTimeout,
+	}
 }
 
 func (a *A10) login() error {
@@ -246,15 +258,6 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("A10 %s", signature))
 
-	// Create custom HTTP client with TLS skip verify
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   defaultTimeout,
-	}
-
 	var resp *http.Response
 	var lastErr error
 	for i := 0; i < maxRequestRetries; i++ {
@@ -263,7 +266,7 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 		}
 
 		var err error
-		resp, err = client.Do(req)
+		resp, err = a.client.Do(req)
 		if err != nil {
 			lastErr = err
 			continue
