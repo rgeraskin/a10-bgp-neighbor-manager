@@ -1,4 +1,4 @@
-name="a10-bgp-neighbor-k8s-syncer"
+name="a10-bgp-neighbor-manager"
 repository="rgeraskin/{name}".format(name=name)
 
 local_resource(

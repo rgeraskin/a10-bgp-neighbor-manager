@@ -31,6 +31,9 @@ type InformerManager interface {
 	delete(obj interface{})
 }
 
+// add adds a new node to the A10 device.
+// It first checks if the node is eligible, and if so,
+// adds the node to the A10 device.
 func (n *Neighbors) add(obj interface{}) {
 	node := obj.(*v1.Node)
 	logger := logger.With(
@@ -45,6 +48,10 @@ func (n *Neighbors) add(obj interface{}) {
 	}
 }
 
+// update updates a node in the A10 device.
+// It first checks if the node is eligible, and if so,
+// adds the node to the A10 device.
+// If the node is not eligible, it removes the node from the A10 device.
 func (n *Neighbors) update(_ interface{}, obj interface{}) {
 	node := obj.(*v1.Node)
 	logger := logger.With(
@@ -64,6 +71,9 @@ func (n *Neighbors) update(_ interface{}, obj interface{}) {
 	}
 }
 
+// delete deletes a node from the A10 device.
+// It first checks if the node is labeled, and if so,
+// removes the node from the A10 device.
 func (n *Neighbors) delete(obj interface{}) {
 	node := obj.(*v1.Node)
 	logger := logger.With(
@@ -78,6 +88,9 @@ func (n *Neighbors) delete(obj interface{}) {
 	}
 }
 
+// StartInformer starts the informer.
+// It creates the shared informer factory and uses the client to connect to
+// Kubernetes.
 func (n *Neighbors) StartInformer() {
 	// Create the shared informer factory and use the client to connect to
 	// Kubernetes
@@ -109,6 +122,10 @@ func (n *Neighbors) StartInformer() {
 	<-n.ctx.Done()
 }
 
+// nodeEligible checks if a node is eligible to be added to the A10 device.
+// It first checks if the node is ready, not cordoned, has an external address,
+// and is labeled.
+// Returns true if the node is eligible, false otherwise.
 func nodeEligible(node *v1.Node, label string) bool {
 	logger := logger.With(
 		"node", node.Name,
@@ -123,6 +140,9 @@ func nodeEligible(node *v1.Node, label string) bool {
 	return eligible
 }
 
+// nodeReady checks if a node is ready.
+// It first checks if the node is ready, and if so,
+// returns true. Else, it returns false.
 func nodeReady(node *v1.Node) bool {
 	logger := logger.With(
 		"node", node.Name,
@@ -138,6 +158,9 @@ func nodeReady(node *v1.Node) bool {
 	return ready
 }
 
+// nodeCordoned checks if a node is cordoned.
+// It first checks if the node is cordoned, and if so,
+// returns true. Else, it returns false.
 func nodeCordoned(node *v1.Node) bool {
 	cordoned := node.Spec.Unschedulable
 	logger := logger.With(
@@ -147,6 +170,9 @@ func nodeCordoned(node *v1.Node) bool {
 	return cordoned
 }
 
+// nodeLabeled checks if a node is labeled.
+// It first checks if the node is labeled, and if so,
+// returns true. Else, it returns false.
 func nodeLabeled(node *v1.Node, label string) bool {
 	logger := logger.With(
 		"label", label,
@@ -165,6 +191,9 @@ func nodeLabeled(node *v1.Node, label string) bool {
 	return labeled
 }
 
+// nodeExternalAddress gets the external address of a node.
+// It first checks if the node has an external address, and if so,
+// returns the external address. Else, it returns an empty string.
 func nodeExternalAddress(node *v1.Node) string {
 	logger := logger.With(
 		"name", node.Name,
@@ -180,6 +209,7 @@ func nodeExternalAddress(node *v1.Node) string {
 	return ""
 }
 
+// getKubernetesClient creates the Kubernetes client.
 func getKubernetesClient() (*kubernetes.Clientset, error) {
 	var config *rest.Config
 	var err error
@@ -218,6 +248,10 @@ type KubeNodesManager interface {
 	GetNodes() error
 }
 
+// GetNodes gets the nodes from the Kubernetes cluster.
+// It first gets the nodes from the Kubernetes cluster, and then
+// checks if the nodes are eligible.
+// Returns an error if the operation fails.
 func (n *KubeNodes) GetNodes() error {
 	logger.Info("Getting nodes from k8s")
 

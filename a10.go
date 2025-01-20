@@ -20,17 +20,20 @@ const (
 	bgpEndpoint       = "/axapi/v3/router/bgp/%d/neighbor/ipv4-neighbor"
 )
 
+// authResponse is the response from the A10 device when logging in.
 type authResponse struct {
 	AuthResponse struct {
 		Signature string `json:"signature"`
 	} `json:"authresponse"`
 }
 
+// ipv4Neighbor is the structure of the data for a BGP neighbor.
 type ipv4Neighbor struct {
 	NeighborIPV4 string `json:"neighbor-ipv4"`
 	RemoteAS     int    `json:"nbr-remote-as"`
 }
 
+// ipv4Neighbors is the structure of the data for a list of BGP neighbors.
 type ipv4Neighbors struct {
 	Ipv4NeighborList []ipv4Neighbor `json:"ipv4-neighbor-list"`
 }
@@ -55,6 +58,9 @@ type BGPManager interface {
 	makeRequest(req *http.Request, signature string) ([]byte, error)
 }
 
+// AddHTTPClient adds an http client to the A10 struct.
+// It creates an http client with TLS skip verify.
+// To reuse the same client for multiple requests
 func (a *A10) AddHTTPClient() {
 	// create http client with TLS skip verify
 	tr := &http.Transport{
@@ -66,6 +72,8 @@ func (a *A10) AddHTTPClient() {
 	}
 }
 
+// login logs in to the A10 device.
+// Returns an error if the operation fails.
 func (a *A10) login() error {
 	logger.Debug("Logging in to A10")
 
@@ -106,8 +114,14 @@ func (a *A10) login() error {
 	return nil
 }
 
+// GetNeighbors gets the neighbors from the A10 device.
+// It first logs in to the A10 device, and then
+// makes a request to get the neighbors.
+// Returns an error if the operation fails.
 func (a *A10) GetNeighbors() error {
 	logger.Debug("Getting neighbors from A10")
+
+	// login to A10
 	if err := a.login(); err != nil {
 		return fmt.Errorf("logging in to A10: %w", err)
 	}
@@ -151,6 +165,9 @@ func (a *A10) GetNeighbors() error {
 	return nil
 }
 
+// containsNeighbor checks if a neighbor exists in the A10 device.
+// It first checks if the neighbor exists, and if so,
+// returns true.
 func (a *A10) containsNeighbor(neighborIP string) bool {
 	logger := logger.With(
 		"neighbor", neighborIP,
@@ -163,6 +180,10 @@ func (a *A10) containsNeighbor(neighborIP string) bool {
 	return contains
 }
 
+// AddNeighbor adds a new BGP neighbor to the A10 device.
+// It first checks if the neighbor already exists, and if not,
+// creates a new neighbor with the specified IP and remote AS.
+// Returns an error if the operation fails.
 func (a *A10) AddNeighbor(neighborIP string) error {
 	logger := logger.With(
 		"neighbor", neighborIP,
@@ -209,6 +230,10 @@ func (a *A10) AddNeighbor(neighborIP string) error {
 	return nil
 }
 
+// RemoveNeighbor removes a BGP neighbor from the A10 device.
+// It first checks if the neighbor exists, and if so,
+// removes the neighbor from the A10 device.
+// Returns an error if the operation fails.
 func (a *A10) RemoveNeighbor(neighborIP string) error {
 	logger := logger.With(
 		"neighbor", neighborIP,
@@ -251,6 +276,10 @@ func (a *A10) RemoveNeighbor(neighborIP string) error {
 	return nil
 }
 
+// makeRequest makes an http request to the A10 device.
+// It adds the necessary headers to the request, and then
+// makes the request.
+// Returns an error if the operation fails.
 func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 	// add headers
 	req.Header.Set("accept", "application/json")
@@ -294,6 +323,10 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 	)
 }
 
+// removeExtraNeighbors removes neighbors from A10 that are not in k8s.
+// It first gets the neighbors from A10, and then
+// removes the neighbors that are not in k8s.
+// Returns an error if the operation fails.
 func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) error {
 	// Remove neighbors from A10 that are not in k8s
 	logger.Info("Removing extra neighbors from A10")

@@ -6,4 +6,4 @@ ko = "0.17.1"
 tilt = "0.33.21"
 
 [tasks.publish]
-run = "ko build -B --platform all"
+run = "KO_DOCKER_REPO=rgeraskin ko build -B --platform all"

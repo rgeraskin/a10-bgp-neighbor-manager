@@ -1,4 +1,4 @@
-module github.com/rgeraskin/a10-bgp-neighbor-k8s-syncer
+module github.com/rgeraskin/a10-bgp-neighbor-manager
 
 go 1.23.2
 
