@@ -1,3 +1,4 @@
 envs.sh
 build
 helm/secret-values.yaml
+.vscode

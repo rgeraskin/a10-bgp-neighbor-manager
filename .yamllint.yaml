@@ -1,0 +1,21 @@
+extends: default
+ignore: |
+  Chart.yaml
+  templates/
+rules:
+  braces:
+    forbid: non-empty
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  empty-values: enable
+  indentation:
+    spaces: 2
+  key-ordering: disable
+  line-length: disable
+  # allow-non-breakable-words: false
+  quoted-strings:
+    quote-type: double
+    required: only-when-needed
+    allow-quoted-quotes: true

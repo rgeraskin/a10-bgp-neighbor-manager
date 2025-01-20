@@ -5,6 +5,7 @@ This is a Kubernetes controller to manage BGP neighbors on an A10 device.
 It uses the A10 API to manage the BGP neighbors and the Kubernetes API to add eligible nodes to the A10 device and remove them if they are not eligible.
 
 Nodes are eligible if they are:
+
 1. labeled with the NODES_LABEL_SELECTOR label
 1. are ready
 1. are not cordoned
@@ -35,7 +36,7 @@ go run .
 Adjust the values in `helm/values.yaml`
 
 ```shell
-helm upgrade --install a10-bgp-neighbor-manager ./helm
+helm upgrade --install a10-bgp-neighbor-controller ./helm
 ```
 
 ## Development
