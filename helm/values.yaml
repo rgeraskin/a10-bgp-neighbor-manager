@@ -1,0 +1,13 @@
+image:
+  repository: rgeraskin/a10-bgp-neighbor-manager
+  tag: latest
+
+debug: true
+
+nodesLabelSelector: bgp=cilium
+a10:
+  address: https://address
+  username: admin
+  password: XXX
+  as: 12345
+  remoteAS: 54321

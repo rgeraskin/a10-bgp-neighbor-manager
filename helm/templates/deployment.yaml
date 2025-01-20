@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            - name: A10_ADDRESS
+              value: {{ .Values.a10.address | quote }}
+            - name: A10_USERNAME
+              value: {{ .Values.a10.username | quote }}
+            - name: A10_PASSWORD
+              value: {{ .Values.a10.password | quote }}
+            - name: A10_AS
+              value: {{ .Values.a10.as | quote }}
+            - name: A10_REMOTE_AS
+              value: {{ .Values.a10.remoteAS | quote }}
+            - name: NODES_LABEL_SELECTOR
+              value: {{ .Values.nodesLabelSelector | quote }}
+            {{- if .Values.debug }}
+            - name: DEBUG
+              value: {{ .Values.debug | quote }}
+            {{- end }}
+      serviceAccountName: {{ .Release.Name }}

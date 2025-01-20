@@ -1,0 +1,9 @@
+
+[tools]
+go = "1.23.5"
+helm = "3.16.2"
+ko = "0.17.1"
+tilt = "0.33.21"
+
+[tasks.publish]
+run = "ko build -B --platform all"
