@@ -18,6 +18,7 @@ import (
 )
 
 type Neighbors struct {
+	ctx       context.Context
 	clientset *kubernetes.Clientset
 	a10       *A10
 	label     string
@@ -85,10 +86,6 @@ func (n *Neighbors) StartInformer() {
 	// Get the informer for the right resource, in this case a Node
 	informer := factory.Core().V1().Nodes().Informer()
 
-	// Create a channel to stops the shared informer gracefully
-	stopper := make(chan struct{})
-	defer close(stopper)
-
 	// Kubernetes serves an utility to handle API crashes
 	defer runtime.HandleCrash()
 
@@ -102,15 +99,14 @@ func (n *Neighbors) StartInformer() {
 		// When a node gets deleted
 		DeleteFunc: n.delete,
 	})
-
 	// You need to start the informer, in my case, it runs in the background
-	go informer.Run(stopper)
+	go informer.Run(n.ctx.Done())
 
-	if !cache.WaitForCacheSync(stopper, informer.HasSynced) {
+	if !cache.WaitForCacheSync(n.ctx.Done(), informer.HasSynced) {
 		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 		return
 	}
-	<-stopper
+	<-n.ctx.Done()
 }
 
 func nodeEligible(node *v1.Node, label string) bool {

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/charmbracelet/log"
 )
@@ -89,6 +92,10 @@ func main() {
 		// Formatter:       log.LogfmtFormatter,
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	gracefulShutdown(cancel)
+
 	clientset, err := getKubernetesClient()
 	if err != nil {
 		logger.Fatal("Error getting Kubernetes client:", err)
@@ -113,6 +120,7 @@ func main() {
 	logger.Debug("Password", "a10Password", config.Password)
 
 	a10 := A10{
+		ctx:      ctx,
 		address:  config.Address,
 		username: config.Username,
 		password: config.Password,
@@ -136,11 +144,23 @@ func main() {
 	}
 
 	neighbors := Neighbors{
+		ctx:       ctx,
 		clientset: clientset,
 		label:     config.LabelSelector,
 		a10:       &a10,
 	}
 	neighbors.StartInformer()
+}
+
+func gracefulShutdown(cancel context.CancelFunc) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		logger.Info("shutting down...")
+		cancel()
+	}()
 }
 
 // func synchronizeNeighbors(a10 *A10, neighbors *NodesNeighbor) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -39,7 +40,8 @@ type A10 struct {
 	remoteAS                        int
 	neighbors                       []string
 
-	mu sync.Mutex
+	ctx context.Context
+	mu  sync.Mutex
 }
 
 type BGPManager interface {
@@ -70,7 +72,7 @@ func (a *A10) login() error {
 		return fmt.Errorf("marshaling JSON: %w", err)
 	}
 	// Create a new HTTP POST request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
+	req, err := http.NewRequestWithContext(a.ctx, "POST", url, bytes.NewBuffer(jsonBytes))
 	if err != nil {
 		return fmt.Errorf("creating request to A10 to get neighbors: %w", err)
 	}
@@ -100,7 +102,7 @@ func (a *A10) GetNeighbors() error {
 	url := fmt.Sprintf("%s%s", a.address, fmt.Sprintf(bgpEndpoint, a.as))
 
 	// Create a new HTTP GET request
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(a.ctx, "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request to A10 to get neighbors: %w", err)
 	}
@@ -175,7 +177,7 @@ func (a *A10) AddNeighbor(neighborIP string) error {
 	}
 	logger.Debugf("Request body to add neighbor: %s", string(jsonData))
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(a.ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("creating request to A10 to add neighbor: %w", err)
 	}
@@ -214,7 +216,7 @@ func (a *A10) RemoveNeighbor(neighborIP string) error {
 		neighborIP,
 	)
 
-	req, err := http.NewRequest("DELETE", url, nil)
+	req, err := http.NewRequestWithContext(a.ctx, "DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request to A10 to remove neighbor: %w", err)
 	}
