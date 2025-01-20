@@ -42,7 +42,7 @@ type A10 struct {
 	neighbors                   []string
 
 	ctx    context.Context
-	mu     sync.Mutex
+	mu     sync.RWMutex
 	client *http.Client
 }
 
@@ -156,6 +156,8 @@ func (a *A10) containsNeighbor(neighborIP string) bool {
 		"neighbor", neighborIP,
 	)
 	// a.getNeighbors()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	contains := slices.Contains(a.neighbors, neighborIP)
 	logger.Debug("Checking if neighbor is in A10", "contains", contains)
 	return contains
@@ -250,9 +252,6 @@ func (a *A10) RemoveNeighbor(neighborIP string) error {
 }
 
 func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	// add headers
 	req.Header.Set("accept", "application/json")
 	req.Header.Set("content-type", "application/json")
