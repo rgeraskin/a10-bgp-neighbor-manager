@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	defaultTimeout = 10 * time.Second
-	authEndpoint   = "/axapi/v3/auth"
-	bgpEndpoint    = "/axapi/v3/router/bgp/%d/neighbor/ipv4-neighbor"
+	defaultTimeout    = 10 * time.Second
+	maxRequestRetries = 3
+	authEndpoint      = "/axapi/v3/auth"
+	bgpEndpoint       = "/axapi/v3/router/bgp/%d/neighbor/ipv4-neighbor"
 )
 
 type authResponse struct {
@@ -254,26 +255,41 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 		Timeout:   defaultTimeout,
 	}
 
-	// make http request
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("making http request: %w", err)
-	}
-	defer resp.Body.Close()
+	var resp *http.Response
+	var lastErr error
+	for i := 0; i < maxRequestRetries; i++ {
+		if lastErr != nil {
+			logger.Error("Retrying request", "error", lastErr, "attempt", i+1)
+		}
 
-	// check if status code is ok
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP request failed: %d", resp.StatusCode)
+		var err error
+		resp, err = client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		// check if status code is ok
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("HTTP request failed: %d", resp.StatusCode)
+			continue
+		}
+
+		// Read response body into string
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
+
+		return body, nil
 	}
 
-	// Read response body into string
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response body: %w", err)
-	}
-
-	// return body bytes
-	return body, nil
+	return nil, fmt.Errorf(
+		"error making http request after %d retries: %v",
+		maxRequestRetries,
+		lastErr,
+	)
 }
 
 func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) error {
