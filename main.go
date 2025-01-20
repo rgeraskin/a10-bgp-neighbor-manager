@@ -11,39 +11,47 @@ import (
 
 var logger *log.Logger
 
-func getInputs() (int, string, string, string, string, string) {
-	// Get remote-as
+type Config struct {
+	RemoteAS      int
+	Address       string
+	Username      string
+	Password      string
+	AS            string
+	LabelSelector string
+}
+
+func getConfig() (*Config, error) {
 	remoteAS := os.Getenv("A10_REMOTE_AS")
 	if remoteAS == "" {
-		logger.Fatal("A10_REMOTE_AS environment variable have to be set")
+		return nil, fmt.Errorf("A10_REMOTE_AS environment variable must be set")
 	}
 	remoteASInt, err := strconv.Atoi(remoteAS)
 	if err != nil {
-		logger.Fatal("A10_REMOTE_AS environment variable have to be a number")
+		return nil, fmt.Errorf("A10_REMOTE_AS must be a number: %w", err)
 	}
 
 	// Get A10 address
 	a10Address := os.Getenv("A10_ADDRESS")
 	if a10Address == "" {
-		logger.Fatal("A10_ADDRESS environment variable have to be set")
+		return nil, fmt.Errorf("A10_ADDRESS environment variable must be set")
 	}
 
 	// Get A10 username
 	a10Username := os.Getenv("A10_USERNAME")
 	if a10Username == "" {
-		logger.Fatal("A10_USERNAME environment variable have to be set")
+		return nil, fmt.Errorf("A10_USERNAME environment variable must be set")
 	}
 
 	// Get A10 password
 	a10Password := os.Getenv("A10_PASSWORD")
 	if a10Password == "" {
-		logger.Fatal("A10_PASSWORD environment variable have to be set")
+		return nil, fmt.Errorf("A10_PASSWORD environment variable must be set")
 	}
 
 	// Get A10 AS
 	a10As := os.Getenv("A10_AS")
 	if a10As == "" {
-		logger.Fatal("A10_AS environment variable have to be set")
+		return nil, fmt.Errorf("A10_AS environment variable must be set")
 	}
 
 	// Label selector for nodes
@@ -58,7 +66,14 @@ func getInputs() (int, string, string, string, string, string) {
 		return nil, fmt.Errorf("label selector must be in the format key=value")
 	}
 
-	return remoteASInt, a10Address, a10Username, a10Password, a10As, labelSelector
+	return &Config{
+		RemoteAS:      remoteASInt,
+		Address:       a10Address,
+		Username:      a10Username,
+		Password:      a10Password,
+		AS:            a10As,
+		LabelSelector: labelSelector,
+	}, nil
 }
 
 func main() {
@@ -78,28 +93,31 @@ func main() {
 	if err != nil {
 		logger.Fatal("Error getting Kubernetes client:", err)
 	}
-	remoteAS, a10Address, a10Username, a10Password, a10AS, labelSelector := getInputs()
+	config, err := getConfig()
+	if err != nil {
+		logger.Fatal("Error getting configuration:", err)
+	}
 	logger.Info(
 		"Inputs",
 		"a10Address",
-		a10Address,
+		config.Address,
 		"a10Username",
-		a10Username,
+		config.Username,
 		"a10AS",
-		a10AS,
+		config.AS,
 		"remoteAS",
-		remoteAS,
+		config.RemoteAS,
 		"labelSelector",
-		labelSelector,
+		config.LabelSelector,
 	)
-	logger.Debug("Password", "a10Password", a10Password)
+	logger.Debug("Password", "a10Password", config.Password)
 
 	a10 := A10{
-		address:  a10Address,
-		username: a10Username,
-		password: a10Password,
-		as:       a10AS,
-		remoteAS: remoteAS,
+		address:  config.Address,
+		username: config.Username,
+		password: config.Password,
+		as:       config.AS,
+		remoteAS: config.RemoteAS,
 	}
 	if err := a10.getNeighbors(); err != nil {
 		logger.Fatal("Error getting neighbors from A10:", err)
@@ -108,7 +126,7 @@ func main() {
 	// Remove extra neighbors from A10 that are not in k8s
 	kubeNodes := KubeNodes{
 		clientset: clientset,
-		label:     labelSelector,
+		label:     config.LabelSelector,
 	}
 	if err := kubeNodes.GetNodes(); err != nil {
 		logger.Fatal("Error getting nodes from k8s:", err)
@@ -119,7 +137,7 @@ func main() {
 
 	neighbors := Neighbors{
 		clientset: clientset,
-		label:     labelSelector,
+		label:     config.LabelSelector,
 		a10:       &a10,
 	}
 	neighbors.StartInformer()
