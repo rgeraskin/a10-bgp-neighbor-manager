@@ -238,37 +238,3 @@ func (n *KubeNodes) GetNodes() error {
 	}
 	return nil
 }
-
-// func nodeDrained(clientset *kubernetes.Clientset, node *v1.Node) bool {
-// 	logger.Debug("Checking node drained", "name", node.Name)
-// 	if node.Spec.Unschedulable {
-// 		pods, _ := clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{
-// 			FieldSelector: fmt.Sprintf("spec.nodeName=%s", node.Name),
-// 		})
-// 		logger.Debug("Node is unschedulable, checking pods")
-// 		for _, pod := range pods.Items {
-// 			logger.Debug("Checking pod", "name", pod.Name)
-// 			// Check pod tolerations to 'node.kubernetes.io/unschedulable:NoSchedule'
-// 			unschedulable := false
-// 			for _, toleration := range pod.Spec.Tolerations {
-// 				logger.Debug("Checking toleration", "toleration", toleration)
-// 				if toleration.Key == "node.kubernetes.io/unschedulable" &&
-// 					toleration.Effect == v1.TaintEffectNoSchedule &&
-// 					toleration.Operator == v1.TolerationOpExists {
-// 					unschedulable = true
-// 					logger.Debug("Pod is tolerated to unschedule")
-// 					break
-// 				}
-// 			}
-// 			if !unschedulable {
-// 				logger.Debug("Pod is not tolerated to unschedule")
-// 				logger.Debug("Node is not drained")
-// 				return false
-// 			}
-// 		}
-// 		logger.Debug("Node is drained")
-// 		return true
-// 	}
-// 	logger.Debug("Node is not drained")
-// 	return false
-// }

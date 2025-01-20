@@ -178,33 +178,3 @@ func gracefulShutdown(cancel context.CancelFunc) {
 		cancel()
 	}()
 }
-
-// func synchronizeNeighbors(a10 *A10, neighbors *NodesNeighbor) {
-// 	// Remove neighbors from A10 that are not in k8s
-// 	logger.Debug("Removing extra neighbors from A10")
-// 	for _, neighbor := range a10.Neighbors {
-// 		logger.Debug("Checking neighbor", "address", neighbor)
-// 		if !neighbors.Contains(neighbor) {
-// 			logger.Debug("A10 neighbor not found in k8s", "neighbor", neighbor)
-// 			a10.RemoveNeighbor(neighbor)
-// 		}
-// 	}
-// 	// Add missing neighbors to A10
-// 	logger.Debug("Adding missing neighbors to A10")
-// 	for _, neighbor := range neighbors.Nodes {
-// 		logger.Debug("Checking neighbor", "node", neighbor.Name, "address", neighbor.Address)
-// 		if !slices.Contains(a10.Neighbors, neighbor.Address) {
-// 			logger.Debug("k8s neighbor not found in A10", "neighbor", neighbor.Address)
-// 			a10.AddNeighbor(neighbor.Address)
-// 		}
-// 	}
-// }
-
-// func getNodeAddress(node *v1.Node, addressType v1.NodeAddressType) string {
-// 	for _, address := range node.Status.Addresses {
-// 		if address.Type == addressType {
-// 			return address.Address
-// 		}
-// 	}
-// 	return ""
-// }
