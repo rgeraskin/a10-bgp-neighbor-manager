@@ -42,6 +42,15 @@ type A10 struct {
 	mu sync.Mutex
 }
 
+type BGPManager interface {
+	AddNeighbor(neighborIP string) error
+	RemoveNeighbor(neighborIP string) error
+	GetNeighbors() ([]string, error)
+	containsNeighbor(neighborIP string) bool
+	login() error
+	makeRequest(req *http.Request, signature string) ([]byte, error)
+}
+
 func (a *A10) login() error {
 	logger.Debug("Logging in to A10")
 
@@ -82,7 +91,7 @@ func (a *A10) login() error {
 	return nil
 }
 
-func (a *A10) getNeighbors() error {
+func (a *A10) GetNeighbors() error {
 	logger.Debug("Getting neighbors from A10")
 	if err := a.login(); err != nil {
 		return fmt.Errorf("logging in to A10: %w", err)

@@ -119,7 +119,7 @@ func main() {
 		as:       config.AS,
 		remoteAS: config.RemoteAS,
 	}
-	if err := a10.getNeighbors(); err != nil {
+	if err := a10.GetNeighbors(); err != nil {
 		logger.Fatal("Error getting neighbors from A10:", err)
 	}
 

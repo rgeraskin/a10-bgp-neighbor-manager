@@ -23,6 +23,13 @@ type Neighbors struct {
 	label     string
 }
 
+type InformerManager interface {
+	StartInformer()
+	add(obj interface{})
+	update(_ interface{}, obj interface{})
+	delete(obj interface{})
+}
+
 func (n *Neighbors) add(obj interface{}) {
 	node := obj.(*v1.Node)
 	logger.Info("Node add event", "node", node.Name)
@@ -184,6 +191,10 @@ type KubeNodes struct {
 	clientset *kubernetes.Clientset
 	label     string
 	Nodes     []string
+}
+
+type KubeNodesManager interface {
+	GetNodes() error
 }
 
 func (n *KubeNodes) GetNodes() error {
