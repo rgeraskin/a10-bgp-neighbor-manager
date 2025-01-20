@@ -32,38 +32,47 @@ type InformerManager interface {
 
 func (n *Neighbors) add(obj interface{}) {
 	node := obj.(*v1.Node)
-	logger.Info("Node add event", "node", node.Name)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Info("Node add event")
 	if nodeEligible(node, n.label) {
-		logger.Info("Node should be added", "node", node.Name)
+		logger.Info("Node should be added")
 		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
-			logger.Error("Error adding neighbor to A10:", "node", node.Name, "error", err)
+			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	}
 }
 
 func (n *Neighbors) update(_ interface{}, obj interface{}) {
 	node := obj.(*v1.Node)
-	logger.Info("Node update event", "node", node.Name)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Info("Node update event")
 	if nodeEligible(node, n.label) {
-		logger.Info("Node should be added", "node", node.Name)
+		logger.Info("Node should be added")
 		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
-			logger.Error("Error adding neighbor to A10:", "node", node.Name, "error", err)
+			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	} else {
-		logger.Info("Node should be removed", "node", node.Name)
+		logger.Info("Node should be removed")
 		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
-			logger.Error("Error removing neighbor from A10:", "node", node.Name, "error", err)
+			logger.Error("Error removing neighbor from A10:", "error", err)
 		}
 	}
 }
 
 func (n *Neighbors) delete(obj interface{}) {
 	node := obj.(*v1.Node)
-	logger.Info("Node delete event", "node", node.Name)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Info("Node delete event")
 	if nodeLabeled(node, n.label) {
-		logger.Info("Node should be removed", "node", node.Name)
+		logger.Info("Node should be removed")
 		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
-			logger.Error("Error removing neighbor from A10:", "node", node.Name, "error", err)
+			logger.Error("Error removing neighbor from A10:", "error", err)
 		}
 	}
 }
@@ -105,57 +114,73 @@ func (n *Neighbors) StartInformer() {
 }
 
 func nodeEligible(node *v1.Node, label string) bool {
-	logger.Debug("Checking node eligibility", "node", node.Name)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Debug("Checking node eligibility")
 	eligible := false
 	if nodeReady(node) && !nodeCordoned(node) && nodeExternalAddress(node) != "" &&
 		nodeLabeled(node, label) {
 		eligible = true
 	}
-	logger.Info("Node eligible to add to A10", "node", node.Name, "eligible", eligible)
+	logger.Info("Node eligible to add to A10", "eligible", eligible)
 	return eligible
 }
 
 func nodeReady(node *v1.Node) bool {
-	logger.Debug("Checking node readiness", "name", node.Name)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Debug("Checking node readiness")
 	ready := false
 	for _, condition := range node.Status.Conditions {
 		if condition.Type == "Ready" {
 			ready = condition.Status == v1.ConditionTrue
 		}
 	}
-	logger.Info("Node readiness", "name", node.Name, "ready", ready)
+	logger.Info("Node readiness", "ready", ready)
 	return ready
 }
 
 func nodeCordoned(node *v1.Node) bool {
 	cordoned := node.Spec.Unschedulable
-	logger.Info("Node cordoned", "name", node.Name, "cordoned", cordoned)
+	logger := logger.With(
+		"node", node.Name,
+	)
+	logger.Info("Node cordoned", "cordoned", cordoned)
 	return cordoned
 }
 
 func nodeLabeled(node *v1.Node, label string) bool {
+	logger := logger.With(
+		"label", label,
+		"node", node.Name,
+	)
 	// split label into key and value
 	parts := strings.Split(label, "=")
 	if len(parts) != 2 {
-		logger.Error("Invalid label format", "label", label)
+		logger.Error("Invalid label format")
 		return false
 	}
 	key := parts[0]
 	value := parts[1]
 	labeled := node.Labels[key] == value
-	logger.Info("Node labeled", "name", node.Name, "labeled", labeled)
+	logger.Info("Node labeled", "labeled", labeled)
 	return labeled
 }
 
 func nodeExternalAddress(node *v1.Node) string {
-	logger.Debug("Getting node external address", "name", node.Name)
+	logger := logger.With(
+		"name", node.Name,
+	)
+	logger.Debug("Getting node external address")
 	for _, address := range node.Status.Addresses {
 		if address.Type == "ExternalIP" {
-			logger.Info("Node external address", "name", node.Name, "address", address.Address)
+			logger.Info("Node external address", "address", address.Address)
 			return address.Address
 		}
 	}
-	logger.Debug("Node external address not found", "name", node.Name)
+	logger.Debug("Node external address not found")
 	return ""
 }
 

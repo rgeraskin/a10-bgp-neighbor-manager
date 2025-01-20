@@ -137,21 +137,28 @@ func (a *A10) GetNeighbors() error {
 }
 
 func (a *A10) containsNeighbor(neighborIP string) bool {
+	logger := logger.With(
+		"neighbor", neighborIP,
+	)
 	// a.getNeighbors()
 	contains := slices.Contains(a.neighbors, neighborIP)
-	logger.Debug("Checking if neighbor is in A10", "neighbor", neighborIP, "contains", contains)
+	logger.Debug("Checking if neighbor is in A10", "contains", contains)
 	return contains
 }
 
 func (a *A10) AddNeighbor(neighborIP string) error {
+	logger := logger.With(
+		"neighbor", neighborIP,
+	)
+
 	if a.containsNeighbor(neighborIP) {
-		logger.Info("Neighbor already exists in A10", "neighbor", neighborIP)
+		logger.Info("Neighbor already exists in A10")
 		return nil
 	}
 	if err := a.login(); err != nil {
 		return fmt.Errorf("logging in to A10: %w", err)
 	}
-	logger.Info("Adding neighbor to A10", "neighbor", neighborIP)
+	logger.Info("Adding neighbor to A10")
 
 	url := fmt.Sprintf("%s%s", a.address, fmt.Sprintf(bgpEndpoint, a.as))
 
@@ -186,14 +193,18 @@ func (a *A10) AddNeighbor(neighborIP string) error {
 }
 
 func (a *A10) RemoveNeighbor(neighborIP string) error {
+	logger := logger.With(
+		"neighbor", neighborIP,
+	)
+
 	if !a.containsNeighbor(neighborIP) {
-		logger.Info("Neighbor does not exist in A10", "neighbor", neighborIP)
+		logger.Info("Neighbor does not exist in A10")
 		return nil
 	}
 	if err := a.login(); err != nil {
 		return fmt.Errorf("logging in to A10: %w", err)
 	}
-	logger.Info("Removing neighbor from A10", "neighbor", neighborIP)
+	logger.Info("Removing neighbor from A10")
 
 	// Create a new HTTP DELETE request
 	url := fmt.Sprintf(
