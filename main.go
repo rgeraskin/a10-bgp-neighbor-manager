@@ -15,11 +15,11 @@ import (
 var logger *log.Logger
 
 type Config struct {
-	RemoteAS      int
 	Address       string
 	Username      string
 	Password      string
-	AS            string
+	AS            int
+	RemoteAS      int
 	LabelSelector string
 }
 
@@ -56,6 +56,10 @@ func getConfig() (*Config, error) {
 	if a10As == "" {
 		return nil, fmt.Errorf("A10_AS environment variable must be set")
 	}
+	a10AsInt, err := strconv.Atoi(a10As)
+	if err != nil {
+		return nil, fmt.Errorf("A10_AS must be a number: %w", err)
+	}
 
 	// Label selector for nodes
 	labelSelector := os.Getenv("NODES_LABEL_SELECTOR")
@@ -74,7 +78,7 @@ func getConfig() (*Config, error) {
 		Address:       a10Address,
 		Username:      a10Username,
 		Password:      a10Password,
-		AS:            a10As,
+		AS:            a10AsInt,
 		LabelSelector: labelSelector,
 	}, nil
 }

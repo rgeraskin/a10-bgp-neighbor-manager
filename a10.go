@@ -16,7 +16,7 @@ import (
 const (
 	defaultTimeout = 10 * time.Second
 	authEndpoint   = "/axapi/v3/auth"
-	bgpEndpoint    = "/axapi/v3/router/bgp/%s/neighbor/ipv4-neighbor"
+	bgpEndpoint    = "/axapi/v3/router/bgp/%d/neighbor/ipv4-neighbor"
 )
 
 type authResponse struct {
@@ -35,10 +35,10 @@ type ipv4Neighbors struct {
 }
 
 type A10 struct {
-	signature                       string
-	address, username, password, as string
-	remoteAS                        int
-	neighbors                       []string
+	signature                   string
+	address, username, password string
+	remoteAS, as                int
+	neighbors                   []string
 
 	ctx context.Context
 	mu  sync.Mutex
