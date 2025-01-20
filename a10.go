@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"sync"
 )
 
 type authResponse struct {
@@ -30,6 +31,8 @@ type A10 struct {
 	address, username, password, as string
 	remoteAS                        int
 	neighbors                       []string
+
+	mu sync.Mutex
 }
 
 func (a *A10) login() error {
@@ -57,7 +60,7 @@ func (a *A10) login() error {
 	}
 
 	// make http request
-	body := makeRequest(req, a.signature)
+	body := a.makeRequest(req, a.signature)
 
 	// get signature
 	var response authResponse
@@ -81,7 +84,7 @@ func (a *A10) getNeighbors() {
 		logger.Fatal("Error creating request to A10 to get neighbors:", err)
 	}
 
-	body := makeRequest(req, a.signature)
+	body := a.makeRequest(req, a.signature)
 
 	// Parse the JSON response
 	var response ipv4Neighbors
@@ -144,8 +147,10 @@ func (a *A10) AddNeighbor(neighborIP string) {
 	}
 
 	logger.Debug("Making request to A10 to add neighbor")
-	_ = makeRequest(req, a.signature)
+	_ = a.makeRequest(req, a.signature)
 
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.neighbors = append(a.neighbors, neighborIP)
 }
 
@@ -171,15 +176,20 @@ func (a *A10) RemoveNeighbor(neighborIP string) {
 	}
 
 	logger.Debug("Making request to A10 to remove neighbor")
-	_ = makeRequest(req, a.signature)
+	_ = a.makeRequest(req, a.signature)
 
 	// Delete neighbor from A10
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	idx := slices.Index(a.neighbors, neighborIP)
 	a.neighbors = slices.Delete(a.neighbors, idx, idx+1)
 	logger.Debug("Neighbors after deletion", "neighbors", a.neighbors)
 }
 
-func makeRequest(req *http.Request, signature string) []byte {
+func (a *A10) makeRequest(req *http.Request, signature string) []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	// add headers
 	req.Header.Set("accept", "application/json")
 	req.Header.Set("content-type", "application/json")
