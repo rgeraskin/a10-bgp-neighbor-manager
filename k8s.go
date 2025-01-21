@@ -40,9 +40,10 @@ func (n *Neighbors) add(obj interface{}) {
 		"node", node.Name,
 	)
 	logger.Info("Node add event")
-	if nodeEligible(node, n.label) {
+	eligible, address := nodeEligible(node, n.label)
+	if eligible {
 		logger.Info("Node should be added")
-		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
+		if err := n.a10.AddNeighbor(address); err != nil {
 			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	}
@@ -58,9 +59,10 @@ func (n *Neighbors) update(_ interface{}, obj interface{}) {
 		"node", node.Name,
 	)
 	logger.Info("Node update event")
-	if nodeEligible(node, n.label) {
+	eligible, address := nodeEligible(node, n.label)
+	if eligible {
 		logger.Info("Node should be added")
-		if err := n.a10.AddNeighbor(nodeExternalAddress(node)); err != nil {
+		if err := n.a10.AddNeighbor(address); err != nil {
 			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	} else {
@@ -126,18 +128,19 @@ func (n *Neighbors) StartInformer() {
 // It first checks if the node is ready, not cordoned, has an external address,
 // and is labeled.
 // Returns true if the node is eligible, false otherwise.
-func nodeEligible(node *v1.Node, label string) bool {
+func nodeEligible(node *v1.Node, label string) (bool, string) {
 	logger := logger.With(
 		"node", node.Name,
 	)
 	logger.Debug("Checking node eligibility")
 	eligible := false
-	if nodeReady(node) && !nodeCordoned(node) && nodeExternalAddress(node) != "" &&
+	address := nodeExternalAddress(node)
+	if nodeReady(node) && !nodeCordoned(node) && address != "" &&
 		nodeLabeled(node, label) {
 		eligible = true
 	}
 	logger.Info("Node eligible to add to A10", "eligible", eligible)
-	return eligible
+	return eligible, address
 }
 
 // nodeReady checks if a node is ready.
@@ -186,8 +189,9 @@ func nodeLabeled(node *v1.Node, label string) bool {
 	}
 	key := parts[0]
 	value := parts[1]
+	logger.Debug("Node labels", "labels", node.Labels)
 	labeled := node.Labels[key] == value
-	logger.Info("Node labeled", "labeled", labeled)
+	logger.Info("Node labeled", "key", key, "value", value, "labeled", labeled)
 	return labeled
 }
 
@@ -266,8 +270,9 @@ func (n *KubeNodes) GetNodes() error {
 	// They are bgp neighbors
 	for _, node := range nodes.Items {
 		logger.Debug("Checking node", "name", node.Name)
-		if nodeEligible(&node, n.label) {
-			n.Nodes = append(n.Nodes, nodeExternalAddress(&node))
+		eligible, address := nodeEligible(&node, n.label)
+		if eligible {
+			n.Nodes = append(n.Nodes, address)
 		}
 	}
 	return nil
