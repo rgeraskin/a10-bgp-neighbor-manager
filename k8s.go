@@ -43,7 +43,7 @@ func (n *Neighbors) add(obj interface{}) {
 	eligible, address := nodeEligible(node, n.label)
 	if eligible {
 		logger.Info("Node should be added")
-		if err := n.a10.AddNeighbor(address); err != nil {
+		if err := n.a10.AddNeighbor(address, node.Name); err != nil {
 			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	}
@@ -62,12 +62,12 @@ func (n *Neighbors) update(_ interface{}, obj interface{}) {
 	eligible, address := nodeEligible(node, n.label)
 	if eligible {
 		logger.Info("Node should be added")
-		if err := n.a10.AddNeighbor(address); err != nil {
+		if err := n.a10.AddNeighbor(address, node.Name); err != nil {
 			logger.Error("Error adding neighbor to A10:", "error", err)
 		}
 	} else {
 		logger.Info("Node should be removed")
-		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
+		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node), node.Name); err != nil {
 			logger.Error("Error removing neighbor from A10:", "error", err)
 		}
 	}
@@ -84,7 +84,7 @@ func (n *Neighbors) delete(obj interface{}) {
 	logger.Info("Node delete event")
 	if nodeLabeled(node, n.label) {
 		logger.Info("Node should be removed")
-		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node)); err != nil {
+		if err := n.a10.RemoveNeighbor(nodeExternalAddress(node), node.Name); err != nil {
 			logger.Error("Error removing neighbor from A10:", "error", err)
 		}
 	}

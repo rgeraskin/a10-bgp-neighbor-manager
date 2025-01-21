@@ -184,9 +184,10 @@ func (a *A10) containsNeighbor(neighborIP string) bool {
 // It first checks if the neighbor already exists, and if not,
 // creates a new neighbor with the specified IP and remote AS.
 // Returns an error if the operation fails.
-func (a *A10) AddNeighbor(neighborIP string) error {
+func (a *A10) AddNeighbor(neighborIP string, nodeName string) error {
 	logger := logger.With(
 		"neighbor", neighborIP,
+		"node", nodeName,
 	)
 
 	if a.containsNeighbor(neighborIP) {
@@ -234,9 +235,10 @@ func (a *A10) AddNeighbor(neighborIP string) error {
 // It first checks if the neighbor exists, and if so,
 // removes the neighbor from the A10 device.
 // Returns an error if the operation fails.
-func (a *A10) RemoveNeighbor(neighborIP string) error {
+func (a *A10) RemoveNeighbor(neighborIP string, nodeName string) error {
 	logger := logger.With(
 		"neighbor", neighborIP,
+		"node", nodeName,
 	)
 
 	if !a.containsNeighbor(neighborIP) {
@@ -341,7 +343,7 @@ func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) error {
 		logger.Debug("Checking neighbor", "address", neighbor)
 		if !slices.Contains(kubeNodes.Nodes, neighbor) {
 			logger.Info("A10 neighbor not found in k8s", "neighbor", neighbor)
-			if err := a10.RemoveNeighbor(neighbor); err != nil {
+			if err := a10.RemoveNeighbor(neighbor, ""); err != nil {
 				return fmt.Errorf("removing neighbor: %w", err)
 			}
 		}
