@@ -330,7 +330,14 @@ func (a *A10) makeRequest(req *http.Request, signature string) ([]byte, error) {
 func removeExtraNeighbors(a10 *A10, kubeNodes *KubeNodes) error {
 	// Remove neighbors from A10 that are not in k8s
 	logger.Info("Removing extra neighbors from A10")
-	for _, neighbor := range a10.neighbors {
+
+	// copy contents of a10.neighbors to a10Neighbors
+	// because we will modify a10.neighbors
+	a10Neighbors := make([]string, len(a10.neighbors))
+	copy(a10Neighbors, a10.neighbors)
+
+	logger.Debug("A10 neighbors", "neighbors", a10Neighbors)
+	for _, neighbor := range a10Neighbors {
 		logger.Debug("Checking neighbor", "address", neighbor)
 		if !slices.Contains(kubeNodes.Nodes, neighbor) {
 			logger.Info("A10 neighbor not found in k8s", "neighbor", neighbor)
