@@ -1,7 +1,7 @@
 image:
   repository: rgeraskin/a10-bgp-neighbor-manager
   tag: latest
-debug: true
+# debug: true
 nodesLabelSelector: bgp=cilium
 a10:
   address: https://address
